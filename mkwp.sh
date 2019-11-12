@@ -32,8 +32,8 @@ mysql_sudo() {
       --user="$WP_MYSQL_SUUSER" "$@"
 }
 
-vagrant(){
-    su - vagrant -c "$@"
+user(){
+    su - ${user} -c "$@"
 }
 
 install_mariadb() {
@@ -87,12 +87,11 @@ install_ssl() {
     echo "empty for now"
 }
 install_ssl_locale() {
-    echo "empty for now"
+    mkdir /etc/ssl/private && chmod 700 /etc/ssl/private && openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt && openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
 }
 
 configure_nginx() {
-    mkdir /etc/ssl/private && chmod 700 /etc/ssl/private && openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt && openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
-    echo -e "user nginx;
+    echo -e 'user nginx;
 worker_processes auto;
 error_log /var/log/nginx/error.log;
 pid /run/nginx.pid;
@@ -118,7 +117,7 @@ http {
 \tserver {
 \t\tlisten       80 default_server;
 \t\tlisten       [::]:80 default_server;
-\t\tserver_name  ${DOMAIN};
+\t\tserver_name  localhost;
 \t\troot         /usr/share/nginx/html;
 
 \t\tinclude /etc/nginx/default.d/*.conf;
@@ -138,7 +137,7 @@ http {
 \tserver {
 \t\tlisten       443 ssl http2 default_server;
 \t\tlisten       [::]:443 ssl http2 default_server;
-\t\tserver_name  ${DOMAIN};
+\t\tserver_name  localhost;
 \t\tssl_certificate "/etc/ssl/certs/nginx-selfsigned.crt";
 \t\tssl_certificate_key "/etc/ssl//private/nginx-selfsigned.key";
 \t\tssl_dhparam "/etc/ssl/certs/dhparam.pem";
@@ -169,10 +168,10 @@ http {
 \t\tlocation = /50x.html {
 \t}
 \t}
-}" > "/etc/nginx/nginx.conf"
+}' > "/etc/nginx/nginx.conf"
 
-touch /etc/nginx/default.d/ssl-redirection.conf
-echo -e ´return 301 https://$host$request_uri/;´ > "/etc/nginx/default.d/ssl-redirection.conf"
+touch "/etc/nginx/default.d/ssl-redirection.conf"
+echo -e 'return 301 https://$host$request_uri/;' > "/etc/nginx/default.d/ssl-redirection.conf"
 }
 
 check_environment() {
@@ -261,7 +260,7 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . /index.php [L]
 </IfModule>"> "$WP_WEBROOT/.htaccess"
       
-  chown vagrant:vagrant "$WP_WEBROOT/.htaccess"
+  chown ${user}:${user} "$WP_WEBROOT/.htaccess"
 
   [[ $? == 0 ]] || die ".htaccess could not created."
 }
@@ -283,18 +282,18 @@ create_wp() {
     mysql_sudo -e "grant all privileges on "$db_name".* to "$db_user"@localhost identified by \"$db_pass\""
     [[ $? == 0 ]] || die "\`$db_user' privileges granted."
       
-    chown vagrant:vagrant $WP_WEBROOT  
+    chown ${user}:${user} $WP_WEBROOT  
 
     if [[ $VERSION == "son" ]];
       then
-        vagrant "cd $WP_WEBROOT &&
+        user "cd $WP_WEBROOT &&
         wp core download --locale=en_US"
       else
-        vagrant "cd $WP_WEBROOT &&
+        user "cd $WP_WEBROOT &&
         wp core download --version=$VERSION --locale=en_US"
       fi
 
-    vagrant "cd $WP_WEBROOT &&
+    user "cd $WP_WEBROOT &&
     wp core config --dbname=$db_name --dbuser=$db_user --dbpass=$db_pass &&
     wp core install --url="http://${WP_DOMAIN}" --title=$WP_NAME --admin_user=vagrant --admin_password=$ADMIN_PASS --admin_email=email@example.org"
       
@@ -310,16 +309,16 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . /index.php [L]
 </IfModule>"> "$WP_WEBROOT/.htaccess"
       
-    chown vagrant:vagrant "$WP_WEBROOT/.htaccess"
+    chown ${user}:${user} "$WP_WEBROOT/.htaccess"
       
-    vagrant "cd $WP_WEBROOT &&
+    user "cd $WP_WEBROOT &&
     wp user create vagrant email@example.org --role=administrator --user_pass=Kid32do${WP_NAME} --display_name='Özgür Yazılım' --first_name=Ozgur --last_name=Yazilim &&
     cd $WP_WEBROOT/wp-content/themes" 2>/dev/null
 } 
 
 
 install_webmin() {
-    dnf update -y && wget https://prdownloads.sourceforge.net/webadmin/webmin-1.930-1.noarch.rpm && dnf install -y perl perl-Net-SSLeay openssl perl-Encode-Detect && rpm -ivh webmin-1.930-1.noarch.rpm
+    dnf update -y && yum install -y wget && wget https://prdownloads.sourceforge.net/webadmin/webmin-1.930-1.noarch.rpm && dnf install -y perl perl-Net-SSLeay openssl perl-Encode-Detect && rpm -ivh webmin-1.930-1.noarch.rpm
     firewall-cmd --add-port=10000/tcp --permanent && firewall-cmd --reload
 }
 
@@ -408,8 +407,6 @@ source "${WP_CONF}" || die "WP configuration file \`${WP_CONF} wrong."
 
 if [[ -n "$WP_NAME" && -n "$VERSION" ]]; then
     install_mariadb
-#    install_ssl
-    install_ssl_locale
     install_nginx
     configure_nginx
     install_php
@@ -417,6 +414,7 @@ if [[ -n "$WP_NAME" && -n "$VERSION" ]]; then
     check_environment
     create_wp
     create_htaccess
+    install_ssl_locale
     install_webmin
     install_postfix
     configure_postfix
