@@ -5,4 +5,4 @@ After trying script please give some feedback for improving and adding new thing
 Have a great day!
 
 
-bash <(curl -Ls https://raw.githubusercontent.com/PadsterH2012/WP_Ubuntu/master/Centos8_nginx_php-fpm.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/PadsterH2012/Centos8_WP/master/mkwp.sh)
