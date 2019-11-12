@@ -1,0 +1,5 @@
+You just need to use mkwp.sh for deploying. Make sure mkwp.sh and wp.conf is in the same directory. 
+You can debug the script with -x paramater like "bash -x mkwp.sh"
+All of the configuration files is in the script. You can change it however you like for you project.
+After trying script please give some feedback for improving and adding new things to the script.
+Have a great day!
