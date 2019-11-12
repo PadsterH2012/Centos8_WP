@@ -6,3 +6,7 @@ Have a great day!
 
 
 bash <(curl -Ls https://raw.githubusercontent.com/PadsterH2012/Centos8_WP/master/mkwp.sh)
+
+wget https://raw.githubusercontent.com/PadsterH2012/Centos8_WP/master/mkwp.sh
+wget https://raw.githubusercontent.com/PadsterH2012/Centos8_WP/master/mkwp.sh
+bash -x mkwp.sh
