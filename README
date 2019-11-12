@@ -3,3 +3,6 @@ You can debug the script with -x paramater like "bash -x mkwp.sh"
 All of the configuration files is in the script. You can change it however you like for you project.
 After trying script please give some feedback for improving and adding new things to the script.
 Have a great day!
+
+
+bash <(curl -Ls https://raw.githubusercontent.com/PadsterH2012/WP_Ubuntu/master/Centos8_nginx_php-fpm.sh)
