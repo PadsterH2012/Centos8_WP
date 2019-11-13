@@ -8,6 +8,17 @@ Have a great day!
 bash <(curl -Ls https://raw.githubusercontent.com/PadsterH2012/Centos8_WP/master/mkwp.sh)
 
 
+
+adduser testacct
+passwd testacct
+usermod -aG wheel testacct
+sudo visudo
+su - testacct
+sudo passwd -d `whoami`
+
+
+
+
 mkdir WP
 cd WP/
 wget https://raw.githubusercontent.com/PadsterH2012/Centos8_WP/master/mkwp.sh
