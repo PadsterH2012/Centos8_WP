@@ -23,7 +23,7 @@ mkdir WP
 cd WP/
 wget https://raw.githubusercontent.com/PadsterH2012/Centos8_WP/master/mkwp.sh
 wget https://raw.githubusercontent.com/PadsterH2012/Centos8_WP/master/wp.conf
-bash -x mkwp.sh
+sudo bash -x mkwp.sh
 
 
 
