@@ -72,6 +72,7 @@ install_nginx() {
     yum install -y nginx && systemctl enable nginx && systemctl start nginx
     systemctl start firewalld && firewall-cmd --permanent --zone=public  --add-service=http && firewall-cmd --permanent --zone=public --add-service=https && firewall-cmd --reload
     iptables -I INPUT -p tcp -m tcp --dport 80 -j ACCEPT && iptables -I INPUT -p tcp -m tcp --dport 443 -j ACCEPT
+    mkdir -p /var/www/html/wordpress
 }
 
 install_php() {
@@ -87,11 +88,11 @@ install_ssl() {
     echo "empty for now"
 }
 install_ssl_locale() {
-    mkdir /etc/ssl/private && chmod 700 /etc/ssl/private && openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt && openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
+    mkdir -p /etc/pki/nginx/private/ && openssl req -newkey rsa:2048 -nodes -keyout /etc/pki/nginx/private/server.key -x509 -days 365 -out /etc/pki/nginx/server.crt
 }
 
 configure_nginx() {
-    echo -e 'user nginx;
+echo -e 'user nginx;
 worker_processes auto;
 error_log /var/log/nginx/error.log;
 pid /run/nginx.pid;
@@ -99,79 +100,89 @@ pid /run/nginx.pid;
 include /usr/share/nginx/modules/*.conf;
 
 events {
-\tworker_connections 1024;
+worker_connections 1024;
 }
 
 http {
 
-\tsendfile            on;
-\ttcp_nopush          on;
-\ttcp_nodelay         on;
-\tkeepalive_timeout   65;
-\ttypes_hash_max_size 2048;
+sendfile            on;
+tcp_nopush          on;
+tcp_nodelay         on;
+keepalive_timeout   65;
+types_hash_max_size 2048;
 
-\tinclude             /etc/nginx/mime.types;
-\tdefault_type        application/octet-stream;
-\tinclude /etc/nginx/conf.d/*.conf;
+include             /etc/nginx/mime.types;
+default_type        application/octet-stream;
+include /etc/nginx/conf.d/*.conf;
 
-\tserver {
-\t\tlisten       80 default_server;
-\t\tlisten       [::]:80 default_server;
-\t\tserver_name  localhost;
-\t\troot         /usr/share/nginx/html;
+server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        server_name localhost;
+        return 301 https://$server_name$request_uri;
+}
 
-\t\tinclude /etc/nginx/default.d/*.conf;
+server {
+listen       443 ssl http2 default_server;
+listen       [::]:443 ssl http2 default_server;
+server_name  localhost;
+root         /usr/share/nginx/html;
 
-\tlocation / {
-\t}
+ssl_certificate "/etc/pki/nginx/server.crt";
+        ssl_certificate_key "/etc/pki/nginx/private/server.key";
+        ssl_session_cache shared:SSL:1m;
+        ssl_session_timeout  10m;
+        ssl_ciphers PROFILE=SYSTEM;
+        ssl_prefer_server_ciphers on;
 
-\terror_page 404 /404.html;
-\t\tlocation = /40x.html {
-\t}
+include /etc/nginx/default.d/*.conf;
 
-\terror_page 500 502 503 504 /50x.html;
-\t\tlocation = /50x.html {
-\t\t}
-\t}
+location / {
+try_files $uri $uri/ /index.php?$args;
+}
 
-\tserver {
-\t\tlisten       443 ssl http2 default_server;
-\t\tlisten       [::]:443 ssl http2 default_server;
-\t\tserver_name  localhost;
-\t\tssl_certificate "/etc/ssl/certs/nginx-selfsigned.crt";
-\t\tssl_certificate_key "/etc/ssl//private/nginx-selfsigned.key";
-\t\tssl_dhparam "/etc/ssl/certs/dhparam.pem";
-\t\tssl_protocols TLSv1 TLSv1.1 TLSv1.2;
-\t\tssl_prefer_server_ciphers on;
-\t\tssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH";
-\t\tssl_ecdh_curve secp384r1;
-\t\tssl_session_cache shared:SSL:10m;
-\t\tssl_session_tickets off;
-\t\tssl_stapling on;
-\t\tssl_stapling_verify on;
-\t\tresolver 8.8.8.8 8.8.4.4 valid=300s;
-\t\tresolver_timeout 5s;
-\t\tadd_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
-\t\tadd_header X-Frame-Options DENY;
-\t\tadd_header X-Content-Type-Options nosniff;
+location ~ ^/wp-content/.+\.php$ {
+return 444;
+}
 
-\t\troot         /usr/share/nginx/html;
+location = /robots.txt {
+allow all;
+log_not_found off;
+access_log off;
+}
 
-\tlocation / {
-\t}
+location ~ /\. {
+deny all;
+access_log off;
+log_not_found off;
+}
 
-\terror_page 404 /404.html;
-\t\tlocation = /40x.html {
-\t}
+location ~ [^/]\.php(/|$) {
+try_files $uri =404;
+fastcgi_pass    127.0.0.1:9001;
+fastcgi_index  index.php;
+fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+include         /etc/nginx/fastcgi_params;
+fastcgi_buffer_size 128k;
+fastcgi_read_timeout 150;
+fastcgi_buffers 256 4k;
+fastcgi_busy_buffers_size 256k;
+fastcgi_temp_file_write_size 256k;
+}
 
-\terror_page 500 502 503 504 /50x.html;
-\t\tlocation = /50x.html {
-\t}
-\t}
-}' > "/etc/nginx/nginx.conf"
+error_page 404 /404.html;
+location = /40x.html {
+}
 
-touch "/etc/nginx/default.d/ssl-redirection.conf"
-echo -e 'return 301 https://$host$request_uri/;' > "/etc/nginx/default.d/ssl-redirection.conf"
+error_page 500 502 503 504 /50x.html;
+location = /50x.html {
+}
+}
+}
+' > "/etc/nginx/nginx.conf"
+
+#touch "/etc/nginx/default.d/ssl-redirection.conf"
+#echo -e 'return 301 https://$host$request_uri/;' > "/etc/nginx/default.d/ssl-redirection.conf"
 }
 
 check_environment() {
@@ -243,6 +254,13 @@ php_value[session.save_handler] = files
 php_value[session.save_path]    = /tmp/session
 php_value[soap.wsdl_cache_dir]  = /tmp/wsdlcache
 ;php_value[opcache.file_cache]  = /tmp/opcache" > "${WP_PHPFPM_CONFIG}/${WP_NAME}.conf"
+
+sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' "/etc/php.ini"
+sed -i 's/listen = \/run\/php-fpm\/www.sock/listen= 127.0.0.1:9000/g' "/etc/php.ini"
+sed -i 's/user = apache/user = nginx/g' "/etc/php-fpm.d/www.conf"
+sed -i 's/group = apache/group = nginx/g' "/etc/php-fpm.d/www.conf"
+
+
 
   [[ $? == 0 ]] || die "PHP-FPM settings is not working."
 }
