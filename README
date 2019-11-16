@@ -18,7 +18,7 @@ sudo passwd -d `whoami`
 
 
 
-
+su - testacct
 mkdir WP
 cd WP/
 wget https://raw.githubusercontent.com/PadsterH2012/Centos8_WP/master/mkwp.sh
