@@ -258,7 +258,7 @@ create_wp() {
     ADMIN_PASS="$(generate_password 16)"
 
     warn "Database \`${db_name}' creating..."
-    mysql_sudo -e "create database "$db_name" character set utf8 collate utf8mb4_unicode_ci"
+    mysql_sudo -e "create database "$db_name" character set utf8 collate utf8_general_ci"
     [[ $? == 0 ]] || die "Database \`${db_name}' is not created."
 
     warn "Grating privileges to \`$db_user' "
