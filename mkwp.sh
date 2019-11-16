@@ -278,7 +278,7 @@ create_wp() {
 
     user "cd $WP_WEBROOT &&
     wp core config --dbname=$db_name --dbuser=$db_user --dbpass=$db_pass &&
-    wp core install --url="http://${WP_DOMAIN}" --title=$WP_NAME --admin_user=vagrant --admin_password=$ADMIN_PASS --admin_email=email@example.org"
+    wp core install --url="http://${WP_DOMAIN}" --title=$WP_NAME --admin_user=$WP_ADMIN --admin_password=$ADMIN_PASS --admin_email=email@example.org"
       
     [[ -d "$WP_WEBROOT/wp-content/uploads" ]] || mkdir "$WP_WEBROOT/wp-content/uploads"
     chown -R nginx:nginx "$WP_WEBROOT/wp-content/uploads"
