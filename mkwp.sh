@@ -282,7 +282,7 @@ create_wp() {
       
     [[ -d "$WP_WEBROOT/wp-content/uploads" ]] || mkdir "$WP_WEBROOT/wp-content/uploads"
     chown -R nginx:nginx "$WP_WEBROOT/wp-content/uploads"
-    sed -e "\$adefine('FS_METHOD', 'direct');" "$WP_WEBROOT/wp-config.php"
+    sed '$ a define('FS_METHOD', 'direct');' $WP_WEBROOT/wp-config.php
     echo -e "<IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteBase /
