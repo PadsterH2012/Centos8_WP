@@ -36,6 +36,10 @@ user(){
     su - ${user} -c "$@"
 }
 
+prepare() {
+    setenforce 0
+}
+
 install_mariadb() {
 
     yum install -y mariadb-server && systemctl start mariadb && systemctl enable mariadb && yum install -y expect
@@ -118,14 +122,14 @@ include /etc/nginx/conf.d/*.conf;
 server {
         listen 80 default_server;
         listen [::]:80 default_server;
-        server_name localhost;
+        server_name 35.204.8.247;
         return 301 https://$server_name$request_uri;
 }
 
 server {
 listen       443 ssl http2 default_server;
 listen       [::]:443 ssl http2 default_server;
-server_name  localhost;
+server_name  35.204.8.247s;
 root         /usr/share/nginx/html;
 
 ssl_certificate "/etc/pki/nginx/server.crt";
@@ -141,9 +145,6 @@ location / {
 try_files $uri $uri/ /index.php?$args;
 }
 
-location ~ ^/wp-content/.+\.php$ {
-return 444;
-}
 
 location = /robots.txt {
 allow all;
@@ -158,7 +159,7 @@ log_not_found off;
 }
 
 location ~ [^/]\.php(/|$) {
-try_files $uri =404;
+try_files $uri $uri/ /index.php?$args;
 fastcgi_pass    127.0.0.1:9001;
 fastcgi_index  index.php;
 fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
@@ -211,58 +212,22 @@ check_environment() {
 }
 
 configure_phpfpm(){
-    warn "Configuring PHP-FPM pool..."
-    echo -e "[site]
-listen = ${WP_FASTCGI_PASS}
-
-user = php-fpm
-group = php-fpm
-
-request_slowlog_timeout = 5s
-slowlog = ${WP_PHPFPM_LOG_ROOT}/${WP_NAME}-slowlog.log
-listen.allowed_clients = 127.0.0.1
-
-pm = dynamic
-
-pm.max_children = 5
-pm.start_servers = 3
-pm.min_spare_servers = 2
-pm.max_spare_servers = 4
-pm.max_requests = 200
-
-listen.backlog = -1
-
-pm.status_path = /status
-
-request_terminate_timeout = 120s
-rlimit_files = 131072
-rlimit_core = unlimited
-catch_workers_output = yes
-
-env[HOSTNAME] = $HOSTNAME
-env[TMP] = /tmp
-env[TMPDIR] = /tmp
-env[TEMP] = /tmp
-
-;php_admin_value[sendmail_path] = /usr/sbin/sendmail -t -i -f www@my.domain.com
-;php_flag[display_errors] = off
-php_admin_value[error_log] = ${WP_PHPFPM_LOG_ROOT}/${WP_NAME}-error.log
-php_admin_flag[log_errors] = on
-;php_admin_value[memory_limit] = 128M
-
-php_value[session.save_handler] = files
-php_value[session.save_path]    = /tmp/session
-php_value[soap.wsdl_cache_dir]  = /tmp/wsdlcache
-;php_value[opcache.file_cache]  = /tmp/opcache" > "${WP_PHPFPM_CONFIG}/${WP_NAME}.conf"
+    
+echo -e "
+    upstream php-fpm {
+        server 127.0.0.1:9000;
+}
+" > "/etc/nginx/conf.d/php-fpm.conf"
 
 sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/g' "/etc/php.ini"
-sed -i 's/listen = \/run\/php-fpm\/www.sock/listen= 127.0.0.1:9000/g' "/etc/php.ini"
+sed -i 's/listen = \/run\/php-fpm\/www.sock/listen= 127.0.0.1:9000/g' "/etc/php-fpm.d/www.conf"
 sed -i 's/user = apache/user = nginx/g' "/etc/php-fpm.d/www.conf"
 sed -i 's/group = apache/group = nginx/g' "/etc/php-fpm.d/www.conf"
+sed -i 's/server \/run\/php-fpm\/www.sock/server 127.0.0.1:9000/g' "/etc/nginx/conf.d/php-fpm.conf"
+sed -i 's/;listen.owner = nobody/listen.owner = nginx/g' "/etc/php-fpm.d/www.conf"
+sed -i 's/;listen.group = nobody/listen.group = nginx/g' "/etc/php-fpm.d/www.conf"
+sed -i 's/;listen.mode = 0660/listen.mode = 0660/g' "/etc/php-fpm.d/www.conf"
 
-
-
-  [[ $? == 0 ]] || die "PHP-FPM settings is not working."
 }
 
 
@@ -331,7 +296,7 @@ RewriteRule . /index.php [L]
       
     user "cd $WP_WEBROOT &&
     wp user create vagrant email@example.org --role=administrator --user_pass=Kid32do${WP_NAME} --display_name='Özgür Yazılım' --first_name=Ozgur --last_name=Yazilim &&
-    cd $WP_WEBROOT/wp-content/themes" 2>/dev/null
+    cd $WP_WEBROOT && wp theme activate twentyseventeen"
 } 
 
 
@@ -370,7 +335,7 @@ mailbox_size_limit = 0
 recipient_delimiter = +
 inet_interfaces = loopback-only
 inet_protocols = ipv4
-myhostname = ${DOMAIN}
+myhostname = localhost
 myorigin = /etc/mailname
 mynetworks_style = subnet
 smtp_sasl_auth_enable = yes
@@ -424,10 +389,12 @@ source "${WP_CONF}" || die "WP configuration file \`${WP_CONF} wrong."
 
 
 if [[ -n "$WP_NAME" && -n "$VERSION" ]]; then
+    prepare
     install_mariadb
     install_nginx
     configure_nginx
     install_php
+    configure_phpfpm
     install_wp_cli
     check_environment
     create_wp
