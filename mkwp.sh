@@ -412,5 +412,5 @@ systemctl reload nginx >/dev/null 2>&1
 echo "Script completed."
 echo "You can visit http://${DOMAIN}"
 echo "You can visit webmin http://{DOMAIN}:10000"
-echo "Admin Password: admin / $ADMIN_PASS"
+echo "WP Admin : $WP_ADMIN / $ADMIN_PASS"
 echo "Vagrant Password: Vagrant / Kid32do${WP_NAME}"
