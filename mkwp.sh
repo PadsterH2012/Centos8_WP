@@ -122,14 +122,14 @@ include /etc/nginx/conf.d/*.conf;
 server {
         listen 80 default_server;
         listen [::]:80 default_server;
-        server_name test.com;
+        server_name 35.204.8.247;
         return 301 https://$server_name$request_uri;
 }
 
 server {
 listen       443 ssl http2 default_server;
 listen       [::]:443 ssl http2 default_server;
-server_name  test.coms;
+server_name  35.204.8.247s;
 root         /usr/share/nginx/html;
 
 ssl_certificate "/etc/pki/nginx/server.crt";
@@ -258,7 +258,7 @@ create_wp() {
     ADMIN_PASS="$(generate_password 16)"
 
     warn "Database \`${db_name}' creating..."
-    mysql_sudo -e "create database "$db_name" character set utf8 collate utf8_general_ci"
+    mysql_sudo -e "create database "$db_name" character set utf8 collate utf8_turkish_ci"
     [[ $? == 0 ]] || die "Database \`${db_name}' is not created."
 
     warn "Grating privileges to \`$db_user' "
@@ -278,11 +278,11 @@ create_wp() {
 
     user "cd $WP_WEBROOT &&
     wp core config --dbname=$db_name --dbuser=$db_user --dbpass=$db_pass &&
-    wp core install --url="http://${WP_DOMAIN}" --title=$WP_NAME --admin_user=$WP_ADMIN --admin_password=$ADMIN_PASS --admin_email=email@example.org"
+    wp core install --url="http://${WP_DOMAIN}" --title=$WP_NAME --admin_user=vagrant --admin_password=$ADMIN_PASS --admin_email=email@example.org"
       
     [[ -d "$WP_WEBROOT/wp-content/uploads" ]] || mkdir "$WP_WEBROOT/wp-content/uploads"
     chown -R nginx:nginx "$WP_WEBROOT/wp-content/uploads"
-    
+      
     echo -e "<IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteBase /
@@ -412,5 +412,5 @@ systemctl reload nginx >/dev/null 2>&1
 echo "Script completed."
 echo "You can visit http://${DOMAIN}"
 echo "You can visit webmin http://{DOMAIN}:10000"
-echo "WP Admin : $WP_ADMIN / $ADMIN_PASS"
+echo "Admin Password: admin / $ADMIN_PASS"
 echo "Vagrant Password: Vagrant / Kid32do${WP_NAME}"
