@@ -278,7 +278,7 @@ create_wp() {
 
     user "cd $WP_WEBROOT &&
     wp core config --dbname=$db_name --dbuser=$db_user --dbpass=$db_pass &&
-    wp core install --url="http://${WP_DOMAIN}" --title=$WP_NAME --admin_user=vagrant --admin_password=$ADMIN_PASS --admin_email=email@example.org"
+    wp core install --url="http://${WP_DOMAIN}" --title=$WP_NAME --admin_user=$ADMIN_NAME --admin_password=$ADMIN_PASS --admin_email=email@example.org"
       
     [[ -d "$WP_WEBROOT/wp-content/uploads" ]] || mkdir "$WP_WEBROOT/wp-content/uploads"
     chown -R nginx:nginx "$WP_WEBROOT/wp-content/uploads"
@@ -294,8 +294,8 @@ RewriteRule . /index.php [L]
       
     chown ${user}:${user} "$WP_WEBROOT/.htaccess"
       
-    user "cd $WP_WEBROOT &&
-    wp user create vagrant email@example.org --role=administrator --user_pass=Kid32do${WP_NAME} --display_name='Özgür Yazılım' --first_name=Ozgur --last_name=Yazilim &&
+   # user "cd $WP_WEBROOT &&
+   # wp user create vagrant email@example.org --role=administrator --user_pass=Kid32do${WP_NAME} --display_name='Özgür Yazılım' --first_name=Ozgur --last_name=Yazilim &&
     cd $WP_WEBROOT && wp theme activate twentyseventeen"
 } 
 
